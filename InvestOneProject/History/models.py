@@ -1,5 +1,11 @@
 from django.db import models
 from django.conf import settings
+from simple_history.models import HistoricalRecords
+from simple_history import register
+from django.contrib.auth.models import User
+
+register(User)
+
 
 # Create your models here.
 class Share(models.Model):
@@ -7,6 +13,7 @@ class Share(models.Model):
     code = models.CharField(max_length=20)
     company_name = models.CharField(max_length=100)
     exchange_name = models.CharField(max_length=20)
+    history = HistoricalRecords()
     def __str__(self):
         return self.code
 
@@ -14,12 +21,14 @@ class Bill(models.Model):
     brocker_name = models.CharField(max_length=20)
     bill_name = models.CharField(max_length=20)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    history = HistoricalRecords()
     def __str__(self):
         return self.brocker_name +" - " + self.bill_name
 
 class Currency(models.Model):
     code = models.CharField(max_length=7, primary_key=True)
     name = models.CharField(max_length=20)
+    history = HistoricalRecords()
     class Meta:
         verbose_name_plural = "Currencies"
 
@@ -31,6 +40,7 @@ class BrockerPeriodicCommissions(models.Model):
     period_start = models.DateField()
     period_end = models.DateField(null=True)
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
+    history = HistoricalRecords()
 
 class TypeOfDeals(models.TextChoices):
     BUYING_SHARES = 'BUY_SR', 'Покупка акций'
@@ -55,6 +65,7 @@ class MoneyDeal(models.Model):
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     tax = models.DecimalField(max_digits=15, decimal_places=2)
     brocker_periodic_commissions = models.ForeignKey(BrockerPeriodicCommissions, on_delete=models.PROTECT, null=True)
+    history = HistoricalRecords()
 
     def __str__(self):
         return self.type_of_deal + self.currency
@@ -70,6 +81,7 @@ class ShareDeal(models.Model):
     price = models.DecimalField(max_digits=15, decimal_places=5)
     count = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
+    history = HistoricalRecords()
 
 class CurrencyExchangeDeal(models.Model):
     operation_number = models.CharField(max_length=30)
@@ -81,10 +93,12 @@ class CurrencyExchangeDeal(models.Model):
     currency_to_sum = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    history = HistoricalRecords()
 
 class InvestRecommendationAuthor(models.Model):
     name = models.CharField(max_length=50)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    history = HistoricalRecords()
 
 class InvestRecommendation(models.Model):
     datetime = models.DateTimeField()
@@ -94,3 +108,4 @@ class InvestRecommendation(models.Model):
     money_deal = models.ForeignKey(MoneyDeal, on_delete=models.PROTECT, null=True)
     text = models.TextField()
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    history = HistoricalRecords()
