@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.conf import settings
 
 # Create your models here.
 class Share(models.Model):
@@ -13,6 +13,7 @@ class Share(models.Model):
 class Bill(models.Model):
     brocker_name = models.CharField(max_length=20)
     bill_name = models.CharField(max_length=20)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     def __str__(self):
         return self.brocker_name +" - " + self.bill_name
 
@@ -83,6 +84,7 @@ class CurrencyExchangeDeal(models.Model):
 
 class InvestRecommendationAuthor(models.Model):
     name = models.CharField(max_length=50)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
 class InvestRecommendation(models.Model):
     datetime = models.DateTimeField()
@@ -91,3 +93,4 @@ class InvestRecommendation(models.Model):
     share_deal = models.ForeignKey(ShareDeal, on_delete=models.PROTECT, null=True)
     money_deal = models.ForeignKey(MoneyDeal, on_delete=models.PROTECT, null=True)
     text = models.TextField()
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
