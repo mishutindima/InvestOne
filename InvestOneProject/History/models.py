@@ -4,6 +4,7 @@ from simple_history.models import HistoricalRecords
 from simple_history import register
 from django.contrib.auth.models import User
 
+# simple-history#
 register(User)
 
 
@@ -14,26 +15,32 @@ class Share(models.Model):
     company_name = models.CharField(max_length=100)
     exchange_name = models.CharField(max_length=20)
     history = HistoricalRecords()
+
     def __str__(self):
         return self.code
+
 
 class Bill(models.Model):
     brocker_name = models.CharField(max_length=20)
     bill_name = models.CharField(max_length=20)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
+
     def __str__(self):
-        return self.brocker_name +" - " + self.bill_name
+        return self.brocker_name + " - " + self.bill_name
+
 
 class Currency(models.Model):
     code = models.CharField(max_length=7, primary_key=True)
     name = models.CharField(max_length=20)
     history = HistoricalRecords()
+
     class Meta:
         verbose_name_plural = "Currencies"
 
     def __str__(self):
         return self.code
+
 
 class BrockerPeriodicCommissions(models.Model):
     name = models.CharField(max_length=50)
@@ -41,6 +48,7 @@ class BrockerPeriodicCommissions(models.Model):
     period_end = models.DateField(null=True)
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     history = HistoricalRecords()
+
 
 class TypeOfDeals(models.TextChoices):
     BUYING_SHARES = 'BUY_SR', 'Покупка акций'
@@ -53,8 +61,9 @@ class TypeOfDeals(models.TextChoices):
     BROKER_COMMISSION = 'BRK_CM', 'Брокерская комиссия'
     ERROR = 'ERR', 'Ошибка'
 
+
 class MoneyDeal(models.Model):
-    operation_number =models.CharField(max_length=30)
+    operation_number = models.CharField(max_length=30)
     type_of_deal = models.CharField(max_length=10,
                                     choices=TypeOfDeals.choices)
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
@@ -70,6 +79,7 @@ class MoneyDeal(models.Model):
     def __str__(self):
         return self.type_of_deal + self.currency
 
+
 class ShareDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     type_of_deal = models.CharField(max_length=10,
@@ -83,6 +93,7 @@ class ShareDeal(models.Model):
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     history = HistoricalRecords()
 
+
 class CurrencyExchangeDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     datetime = models.DateTimeField()
@@ -95,10 +106,12 @@ class CurrencyExchangeDeal(models.Model):
     commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
     history = HistoricalRecords()
 
+
 class InvestRecommendationAuthor(models.Model):
     name = models.CharField(max_length=50)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
+
 
 class InvestRecommendation(models.Model):
     datetime = models.DateTimeField()
