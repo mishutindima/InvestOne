@@ -210,7 +210,7 @@
 
                 <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
                     <li class="dropdown-header">
-                        <h6>{{user.first_name + user.last_name}}</h6>
+                        <h6>{{user.first_name}} {{user.last_name}}</h6>
                         <span>Web Designer</span>
                     </li>
                     <li>
@@ -268,9 +268,9 @@
     <ul class="sidebar-nav" id="sidebar-nav">
 
         <li class="nav-item">
-            <a class="nav-link " href="index.html">
+            <a class="nav-link " href="history">
                 <i class="bi bi-grid"></i>
-                <span>Обзор</span>
+                <span>Обзор портфеля</span>
             </a>
         </li>
 
@@ -282,7 +282,7 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link " href="index.html">
+            <a class="nav-link " href="history/import-data">
                 <i class="bi bi-grid"></i>
                 <span>Импорт данных</span>
             </a>
@@ -301,8 +301,8 @@
 
 <!-- ======= Content ======= -->
 <main id="main" class="main">
-
-
+    {% block content %}
+    {% endblock %}
 </main><!-- End Content -->
 
 <!-- ======= Footer ======= -->
