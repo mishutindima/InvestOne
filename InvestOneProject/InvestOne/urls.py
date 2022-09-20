@@ -19,8 +19,15 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('', include('History.urls')),
+    path('history/', include('History.urls')),
     path('admin/', admin.site.urls),
+]
+
+# Перенаправляю с страницы по умолчанию на главную страницу приложения
+from django.views.generic import RedirectView
+
+urlpatterns += [
+    path('', RedirectView.as_view(url='/history/', permanent=True)),
 ]
 
 if settings.DEBUG:
