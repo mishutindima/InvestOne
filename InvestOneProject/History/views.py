@@ -13,5 +13,5 @@ def index(request):
 
 
 def import_data(request):
-    bills = Bill.objects
+    bills = Bill.objects.filter(owner=request.user)
     return render(request, 'history/import-data.html', {"bills": bills})
