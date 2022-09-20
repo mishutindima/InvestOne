@@ -9,6 +9,7 @@ register(User)
 
 
 # Create your models here.
+# Ценная бумага
 class Share(models.Model):
     isin = models.CharField(max_length=50)
     code = models.CharField(max_length=20)
@@ -20,6 +21,7 @@ class Share(models.Model):
         return self.code
 
 
+# Счет
 class Bill(models.Model):
     brocker_name = models.CharField(max_length=20)
     bill_name = models.CharField(max_length=20)
@@ -30,6 +32,7 @@ class Bill(models.Model):
         return self.brocker_name + " - " + self.bill_name
 
 
+# Валюта
 class Currency(models.Model):
     code = models.CharField(max_length=7, primary_key=True)
     name = models.CharField(max_length=20)
@@ -42,6 +45,7 @@ class Currency(models.Model):
         return self.code
 
 
+# Периодические брокерские комиссии
 class BrockerPeriodicCommissions(models.Model):
     name = models.CharField(max_length=50)
     period_start = models.DateField()
@@ -50,6 +54,7 @@ class BrockerPeriodicCommissions(models.Model):
     history = HistoricalRecords()
 
 
+#  Справочник типов сделок
 class TypeOfDeals(models.TextChoices):
     BUYING_SHARES = 'BUY_SR', 'Покупка акций'
     SALE_OF_SHARES = 'SL_SR', 'Продажа акций'
@@ -62,6 +67,7 @@ class TypeOfDeals(models.TextChoices):
     ERROR = 'ERR', 'Ошибка'
 
 
+# Сделки с деньгами
 class MoneyDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     type_of_deal = models.CharField(max_length=10,
@@ -80,6 +86,7 @@ class MoneyDeal(models.Model):
         return self.type_of_deal + self.currency
 
 
+# Сделки с ценными бумагами
 class ShareDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     type_of_deal = models.CharField(max_length=10,
@@ -94,6 +101,7 @@ class ShareDeal(models.Model):
     history = HistoricalRecords()
 
 
+# Сделки обмена валют
 class CurrencyExchangeDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     datetime = models.DateTimeField()
@@ -107,12 +115,14 @@ class CurrencyExchangeDeal(models.Model):
     history = HistoricalRecords()
 
 
+# Авторы инвестиционных рекомендаций
 class InvestRecommendationAuthor(models.Model):
     name = models.CharField(max_length=50)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
 
 
+# Инвестиционные рекомендации
 class InvestRecommendation(models.Model):
     datetime = models.DateTimeField()
     author = models.ForeignKey(InvestRecommendationAuthor, on_delete=models.PROTECT)
@@ -122,3 +132,12 @@ class InvestRecommendation(models.Model):
     text = models.TextField()
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
+
+
+# Лог загрузки брокерских отчетов
+class ImportBrockerDataLog(models.Model):
+    datetime = models.DateTimeField()
+    bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
+    file_or_content = models.FileField(upload_to='import_data_log/')
+    status_code = models.IntegerField()
+    error_text = models.TextField()

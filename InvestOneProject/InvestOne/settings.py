@@ -121,12 +121,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+# Список каталогов для сбора статических файлов
 STATICFILES_DIRS = [
     BASE_DIR / "History/static"
 ]
+# URL для шаблонов
 STATIC_URL = 'static/'
 
-# Каталог, куда будут собраны все статические файлы
+# Каталог, куда будут собраны все статические файлы как project-wide, так и app-specific.
 STATIC_ROOT = BASE_DIR / "static"
 
 # Default primary key field type
@@ -134,5 +136,7 @@ STATIC_ROOT = BASE_DIR / "static"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# URL для медиа в шаблонах
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / "static" / "media"
+# путь до папки media, в общем случае она пуста в начале
+MEDIA_ROOT = BASE_DIR / "media"

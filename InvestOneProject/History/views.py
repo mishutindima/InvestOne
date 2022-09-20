@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth import authenticate, login
 from django.http import HttpResponse
-from .models import User
+from .models import User, Bill
 
 
 # Create your views here.
@@ -13,4 +13,5 @@ def index(request):
 
 
 def import_data(request):
-    return render(request, 'history/import-data.html')
+    bills = Bill.objects
+    return render(request, 'history/import-data.html', {"bills": bills})
