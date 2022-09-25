@@ -10,7 +10,7 @@ Home Page
     <h1>Импорт данных</h1>
     <nav>
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="history">Домой</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Домой</a></li>
             <li class="breadcrumb-item active">Импорт данных</li>
         </ol>
     </nav>
@@ -24,12 +24,16 @@ Home Page
                 <div class="card-body">
                     <h5 class="card-title">Параметры импорта данных</h5>
 
-                    <!-- General Form Elements -->
-                    <form>
+                    <form action="" method="post">
+                        {% csrf_token %}
+                        <table>
+                            {{ form }}
+                        </table>
+
                         <div class="row mb-3">
-                            <label class="col-sm-2 col-form-label">Счет</label>
+                            <label for="selectBill" class="col-sm-2 col-form-label">Счет</label>
                             <div class="col-sm-10">
-                                <select class="form-select">
+                                <select class="form-select" id="selectBill">
 
                                     {% for bill in bills.all %}
 
@@ -49,9 +53,9 @@ Home Page
                                                 </div>
                         -->
                         <div class="row mb-3">
-                            <label for="inputNumber" class="col-sm-2 col-form-label">Данные брокера</label>
+                            <label for="inputBrockerFile" class="col-sm-2 col-form-label">Данные брокера</label>
                             <div class="col-sm-10">
-                                <input class="form-control" type="file" id="formFile">
+                                <input class="form-control" type="file" id="inputBrockerFile">
                             </div>
                         </div>
 

@@ -3,6 +3,7 @@ from django.conf import settings
 from simple_history.models import HistoricalRecords
 from simple_history import register
 from django.contrib.auth.models import User
+from datetime import datetime
 
 # simple-history#
 register(User)
@@ -136,8 +137,8 @@ class InvestRecommendation(models.Model):
 
 # Лог загрузки брокерских отчетов
 class ImportBrockerDataLog(models.Model):
-    datetime = models.DateTimeField()
+    datetime = models.DateTimeField(default=datetime.now(), blank=False)
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
-    file_or_content = models.FileField(upload_to='import_data_log/')
-    status_code = models.IntegerField()
+    file_or_content = models.FileField(upload_to='import_brocker_data_log/')
+    status_code = models.IntegerField(default=0)
     error_text = models.TextField()
