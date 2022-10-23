@@ -1,10 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'history/base.html' %}
+{% load static %}
 
-</body>
-</html>
+{% block title %}
+Результат загрузки данных
+{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+    <h1>Импорт данных</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Домой</a></li>
+            <li class="breadcrumb-item active">Импорт данных</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-6">
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Результат загрузки данных</h5>
+
+                    Status: {{ import_brocker_data_log.status_code }}
+
+                    Error Text: {{ import_brocker_data_log.error_text }}
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

@@ -11,7 +11,7 @@ class ImportDataForm(forms.Form):
 
     def __init__(self, user, *args, **kwards):
         super(ImportDataForm, self).__init__(*args, **kwards)
-        self.fields["bill"].choices = Bill.objects.filter(owner=user).values_list('id', 'brocker_name')
+        self.fields["bill"].choices = Bill.objects.filter(owner=user.id).values_list('id', 'brocker_name')
 
     def clean_bill(self):
         bill_id = self.cleaned_data["bill"]
