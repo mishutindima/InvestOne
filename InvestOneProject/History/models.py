@@ -55,7 +55,7 @@ class ImportBrockerDataLog(models.Model):
         FINISHED_SUCCESS = '2', 'Завершено успешно'
         ERROR = '-1', 'Завершено с ошибкой'
 
-    datetime = models.DateTimeField(default=datetime.now(), blank=False)
+    datetime = models.DateTimeField(default=datetime.now())
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     file_or_content = models.FileField(upload_to='import_brocker_data_log/')
     status_code = models.IntegerField(default=0, choices=StatusCodeChoices.choices)
@@ -97,7 +97,7 @@ class MoneyDeal(models.Model):
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     tax = models.DecimalField(max_digits=15, decimal_places=2)
     brocker_periodic_commissions = models.ForeignKey(BrockerPeriodicCommissions, on_delete=models.PROTECT, null=True)
-    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE)
+    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
 
@@ -117,7 +117,7 @@ class ShareDeal(models.Model):
     price = models.DecimalField(max_digits=15, decimal_places=5)
     count = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
-    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE)
+    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
 
@@ -137,7 +137,7 @@ class CurrencyExchangeDeal(models.Model):
     currency_to_sum = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
-    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE)
+    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
 
