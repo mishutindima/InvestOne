@@ -1,5 +1,5 @@
 from django import forms
-from .models import Bill, User
+from .models import Bill
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
