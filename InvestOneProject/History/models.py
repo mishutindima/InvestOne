@@ -73,30 +73,35 @@ class BrockerPeriodicCommissions(models.Model):
 
 #  Справочник типов сделок
 class TypeOfDealsChoices(models.TextChoices):
-    BUYING_SHARES = 'BUY_SR', 'Покупка акций'
-    SALE_OF_SHARES = 'SL_SR', 'Продажа акций'
-    DIVIDENT_PAYMENT = 'DIV', 'Выплата дивидендов/купонов'
-    BUYING_BOND = 'BUY_BND', 'Покупка облигаций'
-    SALE_OF_BOND = 'SL_BND', 'Продажа облигаций'
-    REFILL_MONEY = 'RFL_MN', 'Внесение денег на счет'
-    WITHDRAWAL_MONEY = 'WD_MN', 'Вывод денег со счета'
-    BROKER_COMMISSION = 'BRK_CM', 'Брокерская комиссия'
-    ERROR = 'ERR', 'Ошибка'
+    BUYING_SHARES = 'BUYING_SHARES', 'Покупка акций'
+    SALE_OF_SHARES = 'SALE_OF_SHARES', 'Продажа акций'
+    DIVIDENT_PAYMENT = 'DIVIDENT_PAYMENT', 'Выплата дивидендов/купонов'
+    BUYING_BOND = 'BUYING_BOND', 'Покупка облигаций'
+    SALE_OF_BOND = 'SALE_OF_BOND', 'Продажа облигаций'
+    REFILL_MONEY = 'REFILL_MONEY', 'Внесение денег на счет'
+    WITHDRAWAL_MONEY = 'WITHDRAWAL_MONEY', 'Вывод денег со счета'
+    BROKER_COMMISSION = 'BROKER_COMMISSION', 'Брокерская комиссия'
+    TAX = 'TAX', 'Налоги'
+    UNKNOWN_TYPE = 'UNKNOWN', 'Не распознанный тип'
+    ERROR = 'ERROR', 'Ошибка'
 
 
 # Сделки с деньгами
 class MoneyDeal(models.Model):
-    operation_number = models.CharField(max_length=30)
-    type_of_deal = models.CharField(max_length=10,
+    operation_number = models.CharField(max_length=30, blank=True, null=True)
+    type_of_deal = models.CharField(max_length=20,
                                     choices=TypeOfDealsChoices.choices)
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
-    share_by_divident = models.ForeignKey(Share, on_delete=models.PROTECT)
+    share_by_divident = models.ForeignKey(Share, on_delete=models.PROTECT, blank=True,
+                                          null=True)  # Выплата дивидендов по ЦБ
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     datetime = models.DateTimeField()
     sum = models.DecimalField(max_digits=15, decimal_places=2)
-    commission = models.DecimalField(max_digits=15, decimal_places=2)
-    tax = models.DecimalField(max_digits=15, decimal_places=2)
-    brocker_periodic_commissions = models.ForeignKey(BrockerPeriodicCommissions, on_delete=models.PROTECT, null=True)
+    commission = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    tax = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    brocker_periodic_commissions = models.ForeignKey(BrockerPeriodicCommissions, on_delete=models.PROTECT, blank=True,
+                                                     null=True)
+    comment = models.CharField(max_length=200, blank=True, null=True)
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
@@ -108,7 +113,7 @@ class MoneyDeal(models.Model):
 # Сделки с ценными бумагами
 class ShareDeal(models.Model):
     operation_number = models.CharField(max_length=30)
-    type_of_deal = models.CharField(max_length=10,
+    type_of_deal = models.CharField(max_length=20,
                                     choices=TypeOfDealsChoices.choices)
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
@@ -117,6 +122,7 @@ class ShareDeal(models.Model):
     price = models.DecimalField(max_digits=15, decimal_places=5)
     count = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
