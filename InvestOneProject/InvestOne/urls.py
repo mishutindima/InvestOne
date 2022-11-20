@@ -23,7 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]
 
-# Перенаправляю с страницы по умолчанию на главную страницу приложения
+# Перенаправляю со страницы по умолчанию на главную страницу приложения
 from django.views.generic import RedirectView
 
 urlpatterns += [
