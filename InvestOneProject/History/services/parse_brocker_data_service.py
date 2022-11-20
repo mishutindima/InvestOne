@@ -40,6 +40,7 @@ class ParseBrockerDataService:
             import_brocker_data_log.save()
 
     @staticmethod
+    # TODO Мы никак не работаем с лотностью!!
     def _parse_brocker_report_open(import_brocker_data_log: ImportBrockerDataLog) -> None:
 
         tree = ET.parse(import_brocker_data_log.file_or_content.file)
@@ -56,9 +57,15 @@ class ParseBrockerDataService:
                                                                             "nominal_curr"].strip()), xml_shares))
 
         # 1. Заключенные в отчетном периоде сделки купли/продажи с ценными бумагами
-        xml_share_deals = root.findall('./spot_main_deals_conclusion/item')
+        xml_share_deals = root.findall(
+            './spot_main_deals_conclusion/item')  # Бегаем по этому списку, т к в списке завершенных сделок нет времени заявки
         for xml_share_deal in xml_share_deals:
-            xml_share_deal_id = xml_share_deal.attrib["request_no"].strip()  # Номер заявки
+            xml_share_deal_id = xml_share_deal.attrib[
+                "deal_no"].strip()  # Номер сделки, т к в рамках одной заявки может быть несколько сделок
+            if xml_share_deal_id == None or xml_share_deal_id == "":
+                # не выполненная сделка
+                continue
+
             if ShareDeal.objects.filter(operation_number=xml_share_deal_id,
                                         bill=import_brocker_data_log.bill).exists() is False:
 
@@ -113,7 +120,7 @@ class ParseBrockerDataService:
         # Здесь бегаем именно по уже исполненным сделкам, т к по ним более понятно как рассчитать код валют которые менялись
         currency_exchange_deals_xml = root.findall('./closed_deal/item')
         for currency_exchange_deal_xml in currency_exchange_deals_xml:
-            xml_order_number = currency_exchange_deal_xml.attrib["order_number"].strip()
+            xml_order_number = currency_exchange_deal_xml.attrib["deal_number"].strip()
             if CurrencyExchangeDeal.objects.filter(operation_number=xml_order_number,
                                                    bill=import_brocker_data_log.bill).exists() is False:
                 # Такой операции нет, значит нужно добавлять -> идем дальше по коду цикла
@@ -137,7 +144,8 @@ class ParseBrockerDataService:
                 new_currency_exchange_deal.currency_to_sum = currency_exchange_deal_xml.attrib["quantity"].lstrip("-")
 
                 commission_deal_item_xml = next(
-                    filter(lambda item: item.attrib["order_number"] == new_currency_exchange_deal.operation_number,
+                    filter(lambda item: item.attrib["order_number"] == currency_exchange_deal_xml.attrib[
+                        "order_number"].strip(),
                            root.findall('./made_deal/item')))
                 new_currency_exchange_deal.commission = commission_deal_item_xml.attrib["broker_comm"]
                 new_currency_exchange_deal.commission_currency = Currency.objects.get(
