@@ -16,4 +16,64 @@ Home Page
     </nav>
 </div><!-- End Page Title -->
 
+<section class="section">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Акции в портфеле на текущий момент</h5>
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+
+                        {% for share_balance in bill_info.share_balance %}
+                        <tr>
+                            <td>{{share_balance.share.code}}</td>
+                            <td>{{share_balance.share.name}}</td>
+                            <td>{{share_balance.count}}</td>
+                        </tr>
+                        {% endfor %}
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Остатки денег на счете на текущий момент</h5>
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+
+                        {% for money_balance in bill_info.money_balance %}
+                        <tr>
+                            <td>{{money_balance.currency.code}}</td>
+                            <td>{{money_balance.currency.name}}</td>
+                            <td>{{money_balance.balance}}</td>
+                        </tr>
+                        {% endfor %}
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 {% endblock %}

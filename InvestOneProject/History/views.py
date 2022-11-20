@@ -4,14 +4,31 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from .models import User, Bill, ImportBrockerDataLog
 from .forms import ImportDataForm
+from datetime import datetime
+from .services.calc_sum_data_service import CalcSumDataService
+from dataclasses import dataclass
 
 
 # Create your views here.
+
+@dataclass
+class BillInfo:
+    bill: Bill
+    share_balance: []
+    money_balance: []
+
+
 def index(request):
-    user = authenticate(request, username='admin', password='admin')
-    if user is not None:
-        login(request, user)
-    return render(request, 'history/index.html', {'user': user})
+    bill_info = []
+    for bill in Bill.objects.filter(owner=request.user):
+        if bill.pk == 7:
+            bill_info.append(BillInfo(bill=bill,
+                                      share_balance=CalcSumDataService.get_shares_balance_on_date(rep_bill=bill,
+                                                                                                  date_of_report=datetime.now().date()),
+                                      money_balance=CalcSumDataService.get_money_balance_on_date(rep_bill=bill,
+                                                                                                 date_of_report=datetime.now().date())))
+
+    return render(request, 'history/index.html', {'user': request.user, 'bill_info': bill_info[0]})
 
 
 def import_data(request):
