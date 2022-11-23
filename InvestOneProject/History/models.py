@@ -25,11 +25,12 @@ class Currency(models.Model):
 
 # Ценная бумага
 class Share(models.Model):
+    # Акция не должна содержать валюту, т к может быть несколько размещений акций в разных валютах. Показательный пример: Яндекс. Валюты: RUB, USD, KZT
+    # Номинальная стоимость акции Яндекса - 0,01 EUR, показывает долю 1 акции в установном капитале компании. Если просто - бесполезный для меня показатель
     isin = models.CharField(max_length=50)
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
     exchange_name = models.CharField(max_length=20)
-    currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
     history = HistoricalRecords()
 
     def __str__(self):

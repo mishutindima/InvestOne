@@ -17,7 +17,6 @@ class ParseBrockerDataService:
         code: str
         name: str
         exchange_name: str
-        currency_code: str
 
     def execute(self, import_brocker_data_log: ImportBrockerDataLog) -> None:
 
@@ -52,9 +51,8 @@ class ParseBrockerDataService:
             map(lambda item: ParseBrockerDataService.BrockerReportShare(isin=item.attrib["isin"].strip(),
                                                                         code=item.attrib["ticker"].strip(),
                                                                         name=item.attrib["security_name"].strip(),
-                                                                        exchange_name=item.attrib["board_name"].strip(),
-                                                                        currency_code=item.attrib[
-                                                                            "nominal_curr"].strip()), xml_shares))
+                                                                        exchange_name=item.attrib[
+                                                                            "board_name"].strip()), xml_shares))
 
         # 1. Заключенные в отчетном периоде сделки купли/продажи с ценными бумагами
         xml_share_deals = root.findall(
@@ -93,8 +91,7 @@ class ParseBrockerDataService:
                     share_model = Share(isin=shares_from_report[0].isin,
                                         code=shares_from_report[0].code,
                                         name=shares_from_report[0].name,
-                                        exchange_name=shares_from_report[0].exchange_name,
-                                        currency=Currency.objects.get(code=shares_from_report[0].currency_code))
+                                        exchange_name=shares_from_report[0].exchange_name)
                     share_model.save()
                     new_share_deal.share = share_model
                 else:
@@ -107,12 +104,22 @@ class ParseBrockerDataService:
                     new_share_deal.type_of_deal = TypeOfDealsChoices.SALE_OF_SHARES
                     new_share_deal.count = float(xml_share_deal.attrib["sell_qnty"])
 
-                new_share_deal.currency = new_share_deal.share.currency
+                try:
+                    new_share_deal.currency = Currency.objects.get(
+                        code=xml_share_deal.attrib["accounting_currency_code"].strip())
+                except Currency.DoesNotExist:
+                    raise Currency.DoesNotExist(
+                        "DoesNotExist currency-{}".format(xml_share_deal.attrib["accounting_currency_code"].strip()))
+
                 new_share_deal.datetime = xml_share_deal.attrib["conclusion_time"]
                 new_share_deal.price = float(xml_share_deal.attrib["price"].strip())
                 new_share_deal.commission = float(xml_share_deal.attrib["broker_commission"].strip())
-                new_share_deal.commission_currency = Currency.objects.get(
-                    code=xml_share_deal.attrib["broker_commission_currency_code"].strip())
+                try:
+                    new_share_deal.commission_currency = Currency.objects.get(
+                        code=xml_share_deal.attrib["broker_commission_currency_code"].strip())
+                except Currency.DoesNotExist:
+                    raise Currency.DoesNotExist("DoesNotExist currency-{}".format(
+                        xml_share_deal.attrib["broker_commission_currency_code"].strip()))
 
                 new_share_deal.save()
 
