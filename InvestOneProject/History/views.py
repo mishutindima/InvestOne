@@ -19,14 +19,21 @@ class BillInfo:
 
 
 def index(request):
+    # if request.method == "GET":
+    #     form=FilterByDateForm(request.GET)
+    #     if form.is_valid():
+    #
+    #
+
     bill_info = []
     for bill in Bill.objects.filter(owner=request.user):
         if bill.pk == 7:
+            date_of_report = datetime(year=2019, month=12, day=31)
             bill_info.append(BillInfo(bill=bill,
                                       share_balance=CalcSumDataService.get_shares_balance_on_date(rep_bill=bill,
-                                                                                                  date_of_report=datetime.now().date()),
+                                                                                                  date_of_report=date_of_report),
                                       money_balance=CalcSumDataService.get_money_balance_on_date(rep_bill=bill,
-                                                                                                 date_of_report=datetime.now().date())))
+                                                                                                 date_of_report=date_of_report)))
 
     return render(request, 'history/index.html', {'user': request.user, 'bill_info': bill_info[0]})
 

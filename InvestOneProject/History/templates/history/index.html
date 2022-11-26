@@ -36,7 +36,7 @@ Home Page
                         <tr>
                             <td>{{share_balance.share.code}}</td>
                             <td>{{share_balance.share.name}}</td>
-                            <td>{{share_balance.count}}</td>
+                            <td>{{share_balance.count|floatformat:"2g"}}</td>
                         </tr>
                         {% endfor %}
 
@@ -64,7 +64,7 @@ Home Page
                         <tr>
                             <td>{{money_balance.currency.code}}</td>
                             <td>{{money_balance.currency.name}}</td>
-                            <td>{{money_balance.balance}}</td>
+                            <td>{{money_balance.balance|floatformat:"2g"}}</td>
                         </tr>
                         {% endfor %}
 

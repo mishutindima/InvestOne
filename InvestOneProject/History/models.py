@@ -9,6 +9,10 @@ from datetime import datetime
 register(User)
 
 
+# !!!!!!!!!!!!!!!!!!!!!ВАЖНО!!!!!!!!!!!!!!!!!!
+# ВСЕ СУММЫ ДЕНЕГ СОХРАНЯЮТСЯ В БД С ТАКИМ ЗНАКОМ, КАК ОНИ ВЛИЯЮТ НА БАЛАНС, Т Е РАСХОДНЫЕ С МИНУСОМ, ПРИХОДНЫЕ С ПЛЮСОМ
+
+
 # Create your models here.
 # Валюта
 class Currency(models.Model):
