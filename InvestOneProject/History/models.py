@@ -10,7 +10,7 @@ register(User)
 
 
 # !!!!!!!!!!!!!!!!!!!!!ВАЖНО!!!!!!!!!!!!!!!!!!
-# ВСЕ СУММЫ ДЕНЕГ СОХРАНЯЮТСЯ В БД С ТАКИМ ЗНАКОМ, КАК ОНИ ВЛИЯЮТ НА БАЛАНС, Т Е РАСХОДНЫЕ С МИНУСОМ, ПРИХОДНЫЕ С ПЛЮСОМ
+# ВСЕ СУММЫ ДЕНЕГ И КОЛ_ВО СОХРАНЯЮТСЯ В БД С ТАКИМ ЗНАКОМ, КАК ОНИ ВЛИЯЮТ НА БАЛАНС, Т Е РАСХОДНЫЕ С МИНУСОМ, ПРИХОДНЫЕ С ПЛЮСОМ
 
 
 # Create your models here.
@@ -39,6 +39,15 @@ class Share(models.Model):
 
     def __str__(self):
         return "{} (code = {}, isin = {})".format(self.name, self.code, self.isin)
+
+
+# Словарь альтернативных названий ЦБ, нужно для распознавания ЦБ в тексте
+class AlternativeNameOfShare(models.Model):
+    share = models.ForeignKey(Share, on_delete=models.PROTECT)
+    alt_name = models.CharField(max_length=100, primary_key=True)
+
+    def __str__(self):
+        return self.share.name + ": " + self.alt_name
 
 
 # Счет
@@ -124,8 +133,8 @@ class ShareDeal(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     datetime = models.DateTimeField()
     share = models.ForeignKey(Share, on_delete=models.PROTECT)
-    price = models.DecimalField(max_digits=15, decimal_places=5)
-    count = models.DecimalField(max_digits=15, decimal_places=2)
+    price_with_sign = models.DecimalField(max_digits=15, decimal_places=5)
+    count_without_sign = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)

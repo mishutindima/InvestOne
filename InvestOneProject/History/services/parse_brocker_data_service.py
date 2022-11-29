@@ -1,6 +1,6 @@
 from ..models import ImportBrockerDataLog
 import traceback
-from parse_brocker_data_by_open import ParseBrockerDataByOpen
+from .parse_brocker_data_by_open import ParseBrockerDataByOpen
 
 # Цель класса - парсить брокерский отчет или данные
 class ParseBrockerDataService:

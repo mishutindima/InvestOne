@@ -1,21 +1,18 @@
 from django.shortcuts import render, get_object_or_404
-from django.contrib.auth import authenticate, login
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .models import User, Bill, ImportBrockerDataLog
+from .models import Bill, ImportBrockerDataLog
 from .forms import ImportDataForm
 from datetime import datetime
 from .services.calc_sum_data_service import CalcSumDataService
 from dataclasses import dataclass
 
-
 # Create your views here.
-
 @dataclass
 class BillInfo:
     bill: Bill
-    share_balance: []
-    money_balance: []
+    share_balance: list[CalcSumDataService.ShareBalance]
+    money_balance: list[CalcSumDataService.MoneyBalance]
 
 
 def index(request):
@@ -28,7 +25,7 @@ def index(request):
     bill_info = []
     for bill in Bill.objects.filter(owner=request.user):
         if bill.pk == 7:
-            date_of_report = datetime(year=2019, month=12, day=31)
+            date_of_report = datetime(year=2020, month=12, day=31)
             bill_info.append(BillInfo(bill=bill,
                                       share_balance=CalcSumDataService.get_shares_balance_on_date(rep_bill=bill,
                                                                                                   date_of_report=date_of_report),

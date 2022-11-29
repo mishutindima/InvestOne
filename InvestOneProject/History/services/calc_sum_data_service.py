@@ -16,12 +16,18 @@ class CalcSumDataService:
     def get_shares_balance_on_date(rep_bill: Bill, date_of_report: datetime.date) -> list[ShareBalance]:
         # https://django.fun/ru/docs/django/4.1/topics/db/aggregation/
         share_balance_list = []
-        for share_count in ShareDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report).values(
-                'share').annotate(count_of_share=Sum('count')):
-            share_balance_list.append(CalcSumDataService.ShareBalance(share=Share.objects.get(id=share_count['share']),
-                                                                      count=share_count['count_of_share']))
+        for share_count_by_type in ShareDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report).values(
+                'share', 'type_of_deal').annotate(count_of_share=Sum('count_without_sign')):
+            share_balance = CalcSumDataService._get_or_create_share_balance(share_balance_list,
+                                                                            share_count_by_type['share'])
+            if share_count_by_type['type_of_deal'] in [TypeOfDealsChoices.BUYING_SHARES,
+                                                       TypeOfDealsChoices.BUYING_BOND]:
+                share_balance.count += share_count_by_type['count_of_share']
+            elif share_count_by_type['type_of_deal'] in [TypeOfDealsChoices.SALE_OF_SHARES,
+                                                         TypeOfDealsChoices.SALE_OF_BOND]:
+                share_balance.count -= share_count_by_type['count_of_share']
 
-        return share_balance_list
+        return list(filter(lambda x: x.count != 0, share_balance_list))
 
     @dataclass
     class MoneyBalance:
@@ -50,7 +56,7 @@ class CalcSumDataService:
                                                 balance=(item["sum_of_deal"] or 0) + (item["sum_of_commission"] or 0) +
                                                         (item["sum_of_tax"] or 0)))
 
-        # 2. Обрабатываем валютообменные операции
+        # 2. Обрабатываем валютно-обменные операции
         currency_exchange_deal_filter = CurrencyExchangeDeal.objects.filter(bill=rep_bill,
                                                                             datetime__lte=date_of_report).values(
             'currency_from',
@@ -76,7 +82,7 @@ class CalcSumDataService:
         # 3. Обрабатываем операции с акциями
         share_deal_filter = ShareDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report).values('currency',
                                                                                                          'commission_currency').annotate(
-            sum_of_deal=Sum(F("price") * F("count")),
+            sum_of_deal=Sum(F("price_with_sign") * F("count_without_sign")),
             sum_of_commission=Sum('commission'))
         for item in share_deal_filter:
             money_balance = CalcSumDataService._get_or_create_money_balance(money_balance_list, item['currency'])
@@ -101,3 +107,13 @@ class CalcSumDataService:
                 currency=Currency.objects.get(code=currency_code), balance=0)
             money_balance_list.append(money_balance)
         return money_balance
+
+    # Помощник при расчете остатков финансов на счете
+    @staticmethod
+    def _get_or_create_share_balance(share_balance_list: [], share_id: int) -> ShareBalance:
+        share_balance = next(
+            (x for x in share_balance_list if x.share.id == share_id), None)
+        if share_balance is None:
+            share_balance = CalcSumDataService.ShareBalance(share=Share.objects.get(id=share_id), count=0)
+            share_balance_list.append(share_balance)
+        return share_balance
