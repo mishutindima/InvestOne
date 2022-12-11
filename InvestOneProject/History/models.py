@@ -34,7 +34,6 @@ class Share(models.Model):
     isin = models.CharField(max_length=50)
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
-    exchange_name = models.CharField(max_length=20)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -76,15 +75,6 @@ class ImportBrockerDataLog(models.Model):
     error_text = models.TextField()
 
 
-# Периодические брокерские комиссии
-class BrockerPeriodicCommissions(models.Model):
-    name = models.CharField(max_length=50)
-    period_start = models.DateField()
-    period_end = models.DateField(null=True)
-    bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
-    history = HistoricalRecords()
-
-
 #  Справочник типов сделок
 class TypeOfDealsChoices(models.TextChoices):
     BUYING_SHARES = 'BUYING_SHARES', 'Покупка акций'
@@ -112,9 +102,9 @@ class MoneyDeal(models.Model):
     datetime = models.DateTimeField()
     sum = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+', blank=True, null=True)
     tax = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
-    brocker_periodic_commissions = models.ForeignKey(BrockerPeriodicCommissions, on_delete=models.PROTECT, blank=True,
-                                                     null=True)
+    tax_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+', blank=True, null=True)
     comment = models.CharField(max_length=200, blank=True, null=True)
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
@@ -123,6 +113,10 @@ class MoneyDeal(models.Model):
     def __str__(self):
         return self.type_of_deal
 
+
+class BoardNamesChoices(models.TextChoices):
+    MOSCOW_BOARD = 'MOSCOW_BOARD', 'Московская биржа'
+    SPB_BOARD = 'SPB_BOARD', 'Санкт-Петербургская биржа (ФР СПб)'
 
 # Сделки с ценными бумагами
 class ShareDeal(models.Model):
@@ -133,11 +127,12 @@ class ShareDeal(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     datetime = models.DateTimeField()
     share = models.ForeignKey(Share, on_delete=models.PROTECT)
-    price_with_sign = models.DecimalField(max_digits=15, decimal_places=5)
-    count_without_sign = models.DecimalField(max_digits=15, decimal_places=2)
+    price_without_sign = models.DecimalField(max_digits=15, decimal_places=5)
+    count_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
     commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
+    board_name = models.CharField(max_length=20, choices=BoardNamesChoices.choices)
 
     history = HistoricalRecords()
 

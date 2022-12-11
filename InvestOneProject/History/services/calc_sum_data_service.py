@@ -17,17 +17,12 @@ class CalcSumDataService:
         # https://django.fun/ru/docs/django/4.1/topics/db/aggregation/
         share_balance_list = []
         for share_count_by_type in ShareDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report).values(
-                'share', 'type_of_deal').annotate(count_of_share=Sum('count_without_sign')):
-            share_balance = CalcSumDataService._get_or_create_share_balance(share_balance_list,
-                                                                            share_count_by_type['share'])
-            if share_count_by_type['type_of_deal'] in [TypeOfDealsChoices.BUYING_SHARES,
-                                                       TypeOfDealsChoices.BUYING_BOND]:
-                share_balance.count += share_count_by_type['count_of_share']
-            elif share_count_by_type['type_of_deal'] in [TypeOfDealsChoices.SALE_OF_SHARES,
-                                                         TypeOfDealsChoices.SALE_OF_BOND]:
-                share_balance.count -= share_count_by_type['count_of_share']
-
-        return list(filter(lambda x: x.count != 0, share_balance_list))
+                'share').annotate(count_of_share=Sum('count_with_sign')):
+            if share_count_by_type['count_of_share'] != 0:
+                share_balance = CalcSumDataService._get_or_create_share_balance(share_balance_list,
+                                                                                share_count_by_type['share'])
+                share_balance.count = share_count_by_type['count_of_share']
+        return share_balance_list
 
     @dataclass
     class MoneyBalance:
@@ -39,22 +34,30 @@ class CalcSumDataService:
     def get_money_balance_on_date(rep_bill: Bill, date_of_report: datetime.date) -> list[MoneyBalance]:
         money_balance_list = []
         # Обрабатываем последовательно все возможные операции
-        # 1. Обрабатываем операции с деньгами
-        money_deal_filter = MoneyDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report,
-                                                     type_of_deal__in=[TypeOfDealsChoices.DIVIDENT_PAYMENT,
-                                                                       TypeOfDealsChoices.REFILL_MONEY,
-                                                                       TypeOfDealsChoices.WITHDRAWAL_MONEY,
-                                                                       TypeOfDealsChoices.BROKER_COMMISSION,
-                                                                       TypeOfDealsChoices.TAX]).values(
-            'currency').annotate(
-            sum_of_deal=Sum('sum'),
-            sum_of_commission=Sum('commission'),
-            sum_of_tax=Sum('tax'))
+        # 1. Обрабатываем операции с деньгами: сделки, комиссии, налоги
+        money_deal_filter = MoneyDeal.objects.filter(bill=rep_bill, currency__isnull=False,
+                                                     datetime__lte=date_of_report).values(
+            'currency').annotate(sum_of_deal=Sum('sum'))
         for item in money_deal_filter:
             money_balance_list.append(
                 CalcSumDataService.MoneyBalance(currency=Currency.objects.get(code=item["currency"]),
-                                                balance=(item["sum_of_deal"] or 0) + (item["sum_of_commission"] or 0) +
-                                                        (item["sum_of_tax"] or 0)))
+                                                balance=(item["sum_of_deal"] or 0)))
+        # 1.1. Отдельно обрабатываем комиссии, обязательно должны быть отрицательными
+        money_deal_filter = MoneyDeal.objects.filter(bill=rep_bill, commission_currency__isnull=False,
+                                                     datetime__lte=date_of_report).values(
+            'commission_currency').annotate(sum_of_commission=Sum('commission'))
+        for item in money_deal_filter:
+            money_commission = CalcSumDataService._get_or_create_money_balance(money_balance_list,
+                                                                               item['commission_currency'])
+            money_commission.balance += (item["sum_of_commission"] or 0)
+        # 1.2. Отдельно обрабатываем налоги, обязательно должны быть отрицательными
+        money_deal_filter = MoneyDeal.objects.filter(bill=rep_bill, tax_currency__isnull=False,
+                                                     datetime__lte=date_of_report).values(
+            'tax_currency').annotate(sum_of_tax=Sum('tax'))
+        for item in money_deal_filter:
+            money_tax = CalcSumDataService._get_or_create_money_balance(money_balance_list,
+                                                                        item['tax_currency'])
+            money_tax.balance += (item["sum_of_tax"] or 0)
 
         # 2. Обрабатываем валютно-обменные операции
         currency_exchange_deal_filter = CurrencyExchangeDeal.objects.filter(bill=rep_bill,
@@ -82,11 +85,11 @@ class CalcSumDataService:
         # 3. Обрабатываем операции с акциями
         share_deal_filter = ShareDeal.objects.filter(bill=rep_bill, datetime__lte=date_of_report).values('currency',
                                                                                                          'commission_currency').annotate(
-            sum_of_deal=Sum(F("price_with_sign") * F("count_without_sign")),
+            sum_of_deal=Sum(F("price_without_sign") * F("count_with_sign")),
             sum_of_commission=Sum('commission'))
         for item in share_deal_filter:
             money_balance = CalcSumDataService._get_or_create_money_balance(money_balance_list, item['currency'])
-            money_balance.balance += item['sum_of_deal']
+            money_balance.balance -= item['sum_of_deal']
 
             if item['currency'] == item['commission_currency']:
                 money_balance.balance += item['sum_of_commission']

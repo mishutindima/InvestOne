@@ -13,22 +13,22 @@ class Migration(migrations.Migration):
         migrations.RenameField(
             model_name="historicalsharedeal",
             old_name="count",
-            new_name="count_without_sign",
+            new_name="count_with_sign",
         ),
         migrations.RenameField(
             model_name="historicalsharedeal",
             old_name="price",
-            new_name="price_with_sign",
+            new_name="price_without_sign",
         ),
         migrations.RenameField(
             model_name="sharedeal",
             old_name="count",
-            new_name="count_without_sign",
+            new_name="count_with_sign",
         ),
         migrations.RenameField(
             model_name="sharedeal",
             old_name="price",
-            new_name="price_with_sign",
+            new_name="price_without_sign",
         ),
         migrations.AlterField(
             model_name="importbrockerdatalog",

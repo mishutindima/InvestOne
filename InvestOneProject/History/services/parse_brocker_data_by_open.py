@@ -1,5 +1,5 @@
 from ..models import Currency, Share, ImportBrockerDataLog, ShareDeal, TypeOfDealsChoices, CurrencyExchangeDeal, \
-    MoneyDeal, AlternativeNameOfShare
+    MoneyDeal, AlternativeNameOfShare, BoardNamesChoices
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 import datetime
@@ -30,12 +30,18 @@ class ParseBrockerDataByOpen:
         self.import_brocker_data_log = import_brocker_data_log
         tree = ET.parse(import_brocker_data_log.file_or_content.file)
         self.xml_report_root = tree.getroot()
-        self._parse_shares()
-        self._parse_share_deals()
-        self._parse_currency_exchange_deals()
-        self._parse_money_deals()
 
-    def _parse_shares(self):
+        if self.xml_report_root.attrib['portfolio'].strip().lower() == 'единый брокерский счёт':
+            self._general_parse_shares()
+            self._general_parse_share_deals()
+            self._general_parse_currency_exchange_deals()
+            self._general_parse_money_deals()
+        elif self.xml_report_root.attrib[
+            'portfolio'].strip().lower() == 'фондовый рынок санкт-петербургской биржи (фр спб)':
+            self._spb_parse_share_deals()
+            self._spb_parse_money_deals()
+
+    def _general_parse_shares(self):
         # 0. Получаем справочник ЦБ из отчета, чтобы использовать при парсинге сделок
         xml_shares = self.xml_report_root.findall('./spot_portfolio_security_params/item')
         self.xml_shares_mapping = list(
@@ -46,7 +52,7 @@ class ParseBrockerDataByOpen:
                                                                            "board_name"].strip()), xml_shares))
 
     # 1. Заключенные в отчетном периоде сделки купли/продажи с ценными бумагами
-    def _parse_share_deals(self):
+    def _general_parse_share_deals(self):
 
         xml_share_deals = self.xml_report_root.findall(
             './spot_main_deals_conclusion/item')  # Бегаем по этому списку, т. к. в списке завершенных сделок нет времени заявки
@@ -59,12 +65,14 @@ class ParseBrockerDataByOpen:
                     continue
 
                 if ShareDeal.objects.filter(operation_number=xml_share_deal_id,
-                                            bill=self.import_brocker_data_log.bill).exists() is False:
+                                            bill=self.import_brocker_data_log.bill,
+                                            board_name=BoardNamesChoices.MOSCOW_BOARD).exists() is False:
 
                     # Такой операции нет, значит нужно добавлять -> идем дальше по коду цикла
                     new_share_deal = ShareDeal(operation_number=xml_share_deal_id,
                                                bill=self.import_brocker_data_log.bill,
-                                               import_brocker_data_log=self.import_brocker_data_log)
+                                               import_brocker_data_log=self.import_brocker_data_log,
+                                               board_name=BoardNamesChoices.MOSCOW_BOARD)
 
                     # Указываем ЦБ
                     # 1. Маппинг на ЦБ внутри отчета
@@ -93,12 +101,12 @@ class ParseBrockerDataByOpen:
 
                     if "buy_qnty" in xml_share_deal.attrib and float(xml_share_deal.attrib["buy_qnty"]) != 0:
                         new_share_deal.type_of_deal = TypeOfDealsChoices.BUYING_SHARES
-                        new_share_deal.count_without_sign = float(xml_share_deal.attrib["buy_qnty"])
-                        new_share_deal.price_with_sign = -float(xml_share_deal.attrib["price"].strip())
+                        new_share_deal.count_with_sign = float(xml_share_deal.attrib["buy_qnty"])
+                        new_share_deal.price_without_sign = float(xml_share_deal.attrib["price"].strip())
                     elif "sell_qnty" in xml_share_deal.attrib and float(xml_share_deal.attrib["sell_qnty"]) != 0:
                         new_share_deal.type_of_deal = TypeOfDealsChoices.SALE_OF_SHARES
-                        new_share_deal.count_without_sign = float(xml_share_deal.attrib["sell_qnty"])
-                        new_share_deal.price_with_sign = float(xml_share_deal.attrib["price"].strip())
+                        new_share_deal.count_with_sign = -float(xml_share_deal.attrib["sell_qnty"])
+                        new_share_deal.price_without_sign = float(xml_share_deal.attrib["price"].strip())
                     else:
                         raise Exception(
                             "Doesn't find type operation buy or sell in deal id={}".format(xml_share_deal_id))
@@ -126,7 +134,7 @@ class ParseBrockerDataByOpen:
                     "Exception from parse xml_share_deals, text of xml:begin {} end".format(xml_share_deal)) from ex
 
     # 2. Расчёты по конверсионным сделкам, сделкам с драгоценными металлами
-    def _parse_currency_exchange_deals(self):
+    def _general_parse_currency_exchange_deals(self):
         # Здесь бегаем именно по уже исполненным сделкам, т. к. по ним более понятно как рассчитать код валют которые менялись
         currency_exchange_deals_xml = self.xml_report_root.findall('./closed_deal/item')
         for currency_exchange_deal_xml in currency_exchange_deals_xml:
@@ -169,7 +177,7 @@ class ParseBrockerDataByOpen:
                     currency_exchange_deal_xml)) from ex
 
     # 3. Прочие зачисления/списания денежных средств
-    def _parse_money_deals(self):
+    def _general_parse_money_deals(self):
         money_deal_items_xml = self.xml_report_root.findall('./unified_non_trade_money_operations/item')
 
         # !! У данных записей НЕТ уникального ID, поэтому прежде чем сохранить, проверяем есть ли уже подобные записи в БД
@@ -227,7 +235,7 @@ class ParseBrockerDataByOpen:
 
                     elif re.fullmatch("списаны средства клиента .+ для возврата на расчетный счет", type_of_operation):
                         new_money_deal.type_of_deal = TypeOfDealsChoices.WITHDRAWAL_MONEY
-                        # Ищем связанную строчку с комиссией за вывод
+                        # 1. Ищем связанную строчку с комиссией за вывод
                         commission_items = \
                             list(filter(lambda x: x.attrib['operation_date'] == new_money_deal.datetime and
                                                   (re.sub(" +", " ", x.attrib['comment'].lower()).startswith(
@@ -237,9 +245,25 @@ class ParseBrockerDataByOpen:
                                         , money_deal_items_xml))
                         if len(commission_items) == 1:
                             new_money_deal.commission = commission_items[0].attrib['amount']
+                            new_money_deal.commission_currency = Currency.objects.get(
+                                code=commission_items[0].attrib['currency_code'])
                         elif len(commission_items) > 1:
                             # Не обрабатываем кейсы, когда у нас несколько выводов за 1 день. Как минимум непонятно как их различать между собой. И не схлопнутся ли они
                             raise Exception("Length of commission_items".format(len(commission_items)))
+
+                        # 2. Ищем связанную строчку с налогами
+                        tax_items = \
+                            list(filter(lambda x: x.attrib['operation_date'] == new_money_deal.datetime and
+                                                  re.sub(" +", " ", x.attrib['comment'].lower()).startswith(
+                                                      'удержан налог на доход с клиента ')
+                                        , money_deal_items_xml))
+                        if len(tax_items) == 1:
+                            new_money_deal.tax = tax_items[0].attrib['amount']
+                            new_money_deal.tax_currency = Currency.objects.get(
+                                code=tax_items[0].attrib['currency_code'])
+                        elif len(tax_items) > 1:
+                            # Не обрабатываем кейсы, когда у нас несколько выводов за 1 день. Как минимум непонятно как их различать между собой. И не схлопнутся ли они
+                            raise Exception("Length of commission_items".format(len(tax_items)))
 
                     elif (re.fullmatch("комиссия за вывод средств клиента .+", type_of_operation) or
                           re.fullmatch(
@@ -258,14 +282,17 @@ class ParseBrockerDataByOpen:
 
                     elif re.fullmatch("выплата дохода клиент .+ дивиденды.+", type_of_operation):
                         new_money_deal.type_of_deal = TypeOfDealsChoices.DIVIDENT_PAYMENT
-                        self._take_info_about_divident(new_money_deal, type_of_operation, money_deal_items_xml)
+                        self._general_take_info_about_divident(new_money_deal, type_of_operation, money_deal_items_xml)
 
                     elif re.fullmatch("удержан налог на доход по дивидендам.+", type_of_operation):
                         # Пропускаем, т. к. налог учитываем сразу по строчке с дивидендом
                         continue
+                    elif re.fullmatch("удержан налог на доход с клиента .+", type_of_operation):
+                        # Пропускаем, т. к. налог за вывод денег считается сразу по факту вывода
+                        continue
 
                     # Если тип не смогли определить - кидаем ошибку, чтобы сразу подсветить проблему, а не находить ее спустя какое-то время в данных
-                    if new_money_deal.type_of_deal is None:
+                    if new_money_deal.type_of_deal is None or new_money_deal.type_of_deal == '':
                         raise Exception("Unsupported type_of_deal for text='{}'".format(type_of_operation))
 
                     new_money_deal.sum = key[2]
@@ -292,8 +319,8 @@ class ParseBrockerDataByOpen:
     # Задача функции:
     # 1. Найти имя бумаги, по которой произошла выплата. Для российских бумаг - найти какой налог был уплачен
     # 2. По названию бумаги понять ее код
-    def _take_info_about_divident(self, new_money_deal: MoneyDeal, type_of_operation: str,
-                                  money_deal_items_xml: list[ET.Element]) -> None:
+    def _general_take_info_about_divident(self, new_money_deal: MoneyDeal, type_of_operation: str,
+                                          money_deal_items_xml: list[ET.Element]) -> None:
         # Шаг 1. Найти имя бумаги, по которой произошла выплата. Для российских бумаг - найти какой налог был уплачен
         # Первый тип написания - для российских бумаг
         name_of_share = re.search("(?<=дивиденды )(.+?)(?=-?\d* налог к удержанию)",
@@ -313,6 +340,7 @@ class ParseBrockerDataByOpen:
                 if tax_items[0].attrib['currency_code'] != new_money_deal.currency.code:
                     raise Exception("Different currencies for dividend and tax of dividend")
                 new_money_deal.tax = tax_items[0].attrib['amount']
+                new_money_deal.tax_currency = Currency.objects.get(code=tax_items[0].attrib['currency_code'])
             elif len(tax_items) > 1:
                 raise Exception("Lenght of tax_items for {} is {}".format(name_of_share, len(tax_items)))
 
@@ -349,3 +377,185 @@ class ParseBrockerDataByOpen:
                     new_money_deal.share_by_divident = alt_share.share
                 except AlternativeNameOfShare.DoesNotExist:
                     raise Exception("Couldn't find share for name-{}".format(name_of_share))
+
+    def _spb_parse_share_deals(self):
+
+        xml_share_deals = self.xml_report_root.findall('./closed_deal/item')
+        for xml_share_deal in xml_share_deals:
+            try:
+                # Номер договора, т. к. в рамках одной заявки может быть несколько сделок
+                xml_share_deal_id = xml_share_deal.attrib["agreement"].strip()
+                if xml_share_deal_id is None or xml_share_deal_id == "":
+                    # не выполненная сделка, пропускаем
+                    continue
+
+                if ShareDeal.objects.filter(operation_number=xml_share_deal_id,
+                                            bill=self.import_brocker_data_log.bill,
+                                            board_name=BoardNamesChoices.SPB_BOARD).exists() is False:
+                    # Такой операции нет, значит нужно добавлять -> идем дальше по коду цикла
+                    new_share_deal = ShareDeal(operation_number=xml_share_deal_id,
+                                               bill=self.import_brocker_data_log.bill,
+                                               import_brocker_data_log=self.import_brocker_data_log,
+                                               board_name=BoardNamesChoices.SPB_BOARD)
+                    # Указываем ЦБ
+                    try:
+                        new_share_deal.share = Share.objects.get(isin=xml_share_deal.attrib['isin'])
+                    except Share.DoesNotExist:
+                        new_share_deal.share = Share(isin=xml_share_deal.attrib['isin'],
+                                                     code=xml_share_deal.attrib['coderts'],
+                                                     name=xml_share_deal.attrib['issuername'])
+                        new_share_deal.share.save()
+
+                    if xml_share_deal.attrib["operationtype"] == 'Покупка':
+                        new_share_deal.type_of_deal = TypeOfDealsChoices.BUYING_SHARES
+                        new_share_deal.count_with_sign = float(xml_share_deal.attrib["quantity"])
+                        new_share_deal.price_without_sign = float(xml_share_deal.attrib["price"].strip())
+                    elif xml_share_deal.attrib["operationtype"] == 'Продажа':
+                        new_share_deal.type_of_deal = TypeOfDealsChoices.SALE_OF_SHARES
+                        new_share_deal.count_with_sign = float(xml_share_deal.attrib["quantity"])
+                        new_share_deal.price_without_sign = float(xml_share_deal.attrib["price"].strip())
+                    else:
+                        raise Exception(
+                            "Doesn't find type operation buy or sell in deal id={}".format(xml_share_deal_id))
+
+                    try:
+                        new_share_deal.currency = Currency.objects.get(
+                            code=xml_share_deal.attrib["paymentcurrency"].strip())
+                    except Currency.DoesNotExist:
+                        raise Currency.DoesNotExist(
+                            "DoesNotExist currency-{}".format(
+                                xml_share_deal.attrib["paymentcurrency"].strip()))
+
+                    new_share_deal.commission_currency = new_share_deal.currency
+                    new_share_deal.datetime = datetime.datetime.combine(
+                        datetime.datetime.strptime(xml_share_deal.attrib["ticketdate"], '%Y-%m-%dT%H:%M:%S').date(),
+                        datetime.datetime.strptime(xml_share_deal.attrib["tickettime"], '%H:%M:%S').time())
+                    if "brokerage" in xml_share_deal.attrib:
+                        new_share_deal.commission = -float(xml_share_deal.attrib["brokerage"].strip())
+                    else:
+                        new_share_deal.commission = 0
+                    new_share_deal.save()
+            except Exception as ex:
+                raise Exception(
+                    "Exception from parse xml_share_deals, text of xml:begin {} end".format(xml_share_deal)) from ex
+
+    def _spb_parse_money_deals(self) -> None:
+        money_deal_items_xml = self.xml_report_root.findall('./nontrade_money_operation/item')
+
+        for xml_money_deal in money_deal_items_xml:
+            try:
+                # Номер договора, т. к. в рамках одной заявки может быть несколько сделок
+                xml_money_deal_id = xml_money_deal.attrib["transactionid"].strip()
+                if xml_money_deal_id is None or xml_money_deal_id == "":
+                    raise Exception("Coundn't find unique id in item={}".format(xml_money_deal))
+
+                if MoneyDeal.objects.filter(operation_number=xml_money_deal_id,
+                                            bill=self.import_brocker_data_log.bill).exists() is False:
+                    # Такой операции нет, значит нужно добавлять -> идем дальше по коду цикла
+                    new_money_deal = MoneyDeal(operation_number=xml_money_deal_id,
+                                               bill=self.import_brocker_data_log.bill,
+                                               import_brocker_data_log=self.import_brocker_data_log)
+                    match xml_money_deal.attrib['analyticname'].strip():
+                        case 'Перевод между площадками/счетами ДС':
+                            continue  # служебная запись, не сохраняем
+                        case 'Вознаграждение Брокера за организацию доступа к биржевым торгам с предоставлением информации клиентам, необходимой для совершения операций и сделок':
+                            new_money_deal.type_of_deal = TypeOfDealsChoices.BROKER_COMMISSION
+                        case 'Комиссия Брокера за заключение сделок':
+                            continue  # комиссия за заключение сделок учтена в сделках с акциями
+                        case 'Зачисление дивидендов':
+                            new_money_deal.type_of_deal = TypeOfDealsChoices.DIVIDENT_PAYMENT
+                            new_money_deal.share_by_divident = self._spb_get_share_from_dividend(
+                                xml_money_deal.attrib['comment'].lower())
+                        case 'Списание ДС':
+                            new_money_deal.type_of_deal = TypeOfDealsChoices.WITHDRAWAL_MONEY
+                            comm_items = list(filter(lambda x: x.attrib[
+                                                                   'analyticname'].strip() == 'Вознаграждение Брокера за обработку заявления на вывод безналичных денежных средств' and
+                                                               x.attrib['operationdate'] == xml_money_deal.attrib[
+                                                                   'operationdate'] and
+                                                               x.attrib['currencycode'] == xml_money_deal.attrib[
+                                                                   'currencycode']
+                                                     , money_deal_items_xml))
+                            if len(comm_items) == 1:
+                                new_money_deal.commission = float(comm_items[0].attrib['amount'])
+                                new_money_deal.commission_currency = Currency.objects.get(
+                                    code=comm_items[0].attrib['currencycode'])
+                            elif len(comm_items) > 1:
+                                raise Exception(
+                                    "Several commission items to WITHDRAWAL_MONEY by id={}".format(xml_money_deal_id))
+
+                        case 'Вознаграждение Брокера за обработку заявления на вывод безналичных денежных средств':
+                            continue  # Запись пропускаем, т к комиссию учитываем в самой записи с выводом
+                        case 'Конвертация ДС':  # Валютно обменные операции
+                            if float(xml_money_deal.attrib['amount']) > 0:
+                                continue  # Обрабатываем только операции продажи, чтобы не задублировать записи
+                            # Проверяем, что подобной записи не создавали ранее
+                            if CurrencyExchangeDeal.objects.filter(bill=new_money_deal.bill,
+                                                                   operation_number=xml_money_deal.attrib[
+                                                                       'transactionid']).exists() is True:
+                                continue  # запись уже существует, повторно не создаем
+
+                            xml_sale_money_deal = xml_money_deal
+                            xml_buy_money_deal = \
+                                list(filter(lambda x: x.attrib['comment'] == xml_sale_money_deal.attrib['comment'] and
+                                                      x.attrib['operationdate'] == xml_sale_money_deal.attrib[
+                                                          'operationdate']
+                                            , money_deal_items_xml))[0]
+                            exchange_deal = CurrencyExchangeDeal(
+                                operation_number=xml_sale_money_deal.attrib['transactionid'],
+                                datetime=xml_sale_money_deal.attrib['operationdate'],
+                                currency_from=Currency.objects.get(code=xml_sale_money_deal.attrib['currencycode']),
+                                currency_to=Currency.objects.get(code=xml_buy_money_deal.attrib['currencycode']),
+                                bill=new_money_deal.bill,
+                                currency_from_sum=float(xml_sale_money_deal.attrib['amount']),
+                                currency_to_sum=float(xml_buy_money_deal.attrib['amount']),
+                                import_brocker_data_log=new_money_deal.import_brocker_data_log,
+                                commission=0,
+                                commission_currency=Currency.objects.get(
+                                    code=xml_sale_money_deal.attrib['currencycode'])
+                            )
+
+                            exchange_deal.save()
+                            continue  # Покидаем эту итерацию цикла, т к вместо сделки с деньгами мы провели валютно обменную сделку
+
+                        case 'Налог на доходы ФЛ /прибыль ЮЛ':
+                            new_money_deal.type_of_deal = TypeOfDealsChoices.TAX
+                        case _:
+                            raise Exception(
+                                "Unknown type of operation={}".format(xml_money_deal.attrib['analyticname']))
+
+                    new_money_deal.datetime = xml_money_deal.attrib['operationdate']
+                    new_money_deal.sum = float(xml_money_deal.attrib['amount'])
+                    new_money_deal.comment = xml_money_deal.attrib['comment']
+                    new_money_deal.currency = Currency.objects.get(code=xml_money_deal.attrib['currencycode'])
+                    new_money_deal.save()
+            except Exception as ex:
+                raise Exception("Exception from parse nontrade_money_operation, text of key:begin {} end".format(
+                    xml_money_deal)) from ex
+
+    def _spb_get_share_from_dividend(self, divident_comment: str) -> Share:
+        # 1. Вычленяем имя бумаги из строчки с дивидендами
+        name_of_share_group = re.search("(?<=дивиденды <)(.+?)(?=-ао>)", divident_comment)
+        if name_of_share_group is None or name_of_share_group.group() == "":
+            raise Exception("Unknown share by divident={}".format(divident_comment))
+        name_of_share = name_of_share_group.group()
+        try:
+            # 2. Ищем по прямому соответствию
+            return Share.objects.get(name__iexact=name_of_share)
+        except Share.DoesNotExist:
+            # 3. Пытаемся подбирать названия
+            if name_of_share.endswith(" inc"):
+                try:
+                    return Share.objects.get(name__istartswith=name_of_share[0:-4])
+                except Share.DoesNotExist:
+                    pass
+            # удаляем второстепенные знаки препинания
+            try:
+                name_of_share = name_of_share.replace(".", "").replace(",", "")
+                return Share.objects.get(name__iexact=name_of_share)
+            except Share.DoesNotExist:
+                pass
+            # 4. Если не нашли запись по прямому соответствию -> идем в словарь альтернативных названий
+            try:
+                return AlternativeNameOfShare.objects.get(alt_name__iexact=name_of_share).share
+            except AlternativeNameOfShare.DoesNotExist:
+                raise Exception("Couldn't find share for name-{}".format(name_of_share))

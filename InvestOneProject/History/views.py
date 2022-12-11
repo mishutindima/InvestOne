@@ -6,6 +6,7 @@ from .forms import ImportDataForm
 from datetime import datetime
 from .services.calc_sum_data_service import CalcSumDataService
 from dataclasses import dataclass
+from django.contrib.auth import authenticate, login
 
 # Create your views here.
 @dataclass
@@ -21,6 +22,10 @@ def index(request):
     #     if form.is_valid():
     #
     #
+    # TODO remove after add auth
+    user = authenticate(request, username='admin', password='admin')
+    if user is not None:
+        login(request, user)
 
     bill_info = []
     for bill in Bill.objects.filter(owner=request.user):
