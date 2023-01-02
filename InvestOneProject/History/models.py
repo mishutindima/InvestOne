@@ -8,7 +8,6 @@ from datetime import datetime
 # simple-history#
 register(User)
 
-
 # !!!!!!!!!!!!!!!!!!!!!ВАЖНО!!!!!!!!!!!!!!!!!!
 # ВСЕ СУММЫ ДЕНЕГ И КОЛ_ВО СОХРАНЯЮТСЯ В БД С ТАКИМ ЗНАКОМ, КАК ОНИ ВЛИЯЮТ НА БАЛАНС, Т Е РАСХОДНЫЕ С МИНУСОМ, ПРИХОДНЫЕ С ПЛЮСОМ
 
@@ -26,6 +25,12 @@ class Currency(models.Model):
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
 
+class CurrencyAlternativeName(models.Model):
+    code = models.ForeignKey(Currency, on_delete=models.PROTECT)
+    alt_code = models.CharField(max_length=7, primary_key=True)
+
+    def __str__(self):
+        return "{} (alt_name: {})".format(self.code, self.alt_code)
 
 # Ценная бумага
 class Share(models.Model):
@@ -41,7 +46,7 @@ class Share(models.Model):
 
 
 # Словарь альтернативных названий ЦБ, нужно для распознавания ЦБ в тексте
-class AlternativeNameOfShare(models.Model):
+class ShareAlternativeName(models.Model):
     share = models.ForeignKey(Share, on_delete=models.PROTECT)
     alt_name = models.CharField(max_length=100, primary_key=True)
 
@@ -174,3 +179,32 @@ class InvestRecommendation(models.Model):
     text = models.TextField()
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
+
+class DirectionOfOperation(models.TextChoices):
+    SELL = 'SELL', 'Продажа'
+    BUY = 'BUY', 'Покупка'
+
+# Сделки репо - единый класс как для валют, так и для ЦБ
+# Логика: 1-ая часть - продается актив, получается выручка в виде связанной валюты;
+# 2-ая часть - покупается данный актив, валюта тратится
+class RepoDeal(models.Model):
+    operation_number = models.CharField(max_length=30)
+    bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
+    datetime_first_part = models.DateTimeField()
+    datetime_second_part = models.DateTimeField()
+    direction_first_part = models.CharField(max_length=4, choices=DirectionOfOperation.choices)
+    # Одно из этих полей должно быть заполнено
+    repo_share = models.ForeignKey(Share, on_delete=models.PROTECT, null=True, related_name='+')
+    repo_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, null=True, related_name='+')
+
+    count_without_sign = models.DecimalField(max_digits=15, decimal_places=2)
+    price_first_part_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
+    price_second_part_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
+    related_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    commission = models.DecimalField(max_digits=15, decimal_places=2)
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
+
+    history = HistoricalRecords()
+
+# Репо сделки с активами

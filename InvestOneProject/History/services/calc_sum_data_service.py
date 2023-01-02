@@ -1,4 +1,4 @@
-from ..models import Bill, Share, ShareDeal, Currency, MoneyDeal, TypeOfDealsChoices, CurrencyExchangeDeal
+from ..models import Bill, Share, ShareDeal, Currency, MoneyDeal, TypeOfDealsChoices, CurrencyExchangeDeal, RepoDeal, DirectionOfOperation
 import datetime
 import decimal
 from dataclasses import dataclass
@@ -98,11 +98,48 @@ class CalcSumDataService:
                                                                                            item['commission_currency'])
                 commission_money_balance.balance += item['sum_of_commission']
 
+        CalcSumDataService._get_money_balance_by_svop_deals(rep_bill, date_of_report, money_balance_list)
+
         return money_balance_list
+
+    @staticmethod
+    def _get_money_balance_by_svop_deals(rep_bill: Bill, date_of_report: datetime.date, money_balance_list = []) -> None:
+        # Возможные влияния на баланс:
+        # 1. Комиссия. Важно, что фильтруемся по первой дате, т к комиссия списывается в этот момент
+        repo_deal_filter = RepoDeal.objects.filter(bill=rep_bill, datetime_first_part__lte=date_of_report).values(
+            'commission_currency').annotate(sum_of_commission=Sum('commission'))
+        for item in repo_deal_filter:
+            money_balance = CalcSumDataService._get_or_create_money_balance(money_balance_list, item['commission_currency'])
+            money_balance.balance += item['sum_of_commission']
+
+        # 2. Связанная валюта, по которой происходят сделки.
+        # 2.1. Сначала берем сделки, которые полностью завершены к моменту проведения отчета.
+        repo_deal_filter_1 = RepoDeal.objects.filter(bill=rep_bill, datetime_second_part__lte=date_of_report).values(
+            'related_currency').annotate(sum=Sum(F('price_first_part_with_sign') + F('price_second_part_with_sign')))
+        # 2.2. Берем сделки, которые начаты, но еще не завершены
+        repo_deal_filter_2 = RepoDeal.objects.filter(bill=rep_bill, datetime_first_part__lte=date_of_report,
+                                                   datetime_second_part__gte=date_of_report).values(
+            'related_currency').annotate(sum=Sum('price_first_part_with_sign'))
+        for item in repo_deal_filter_1.union(repo_deal_filter_2):
+            money_balance = CalcSumDataService._get_or_create_money_balance(money_balance_list,
+                                                                            item['related_currency'])
+            money_balance.balance += item['sum']
+
+        # 3. Валюта и есть тот актив, по которому выполняется своп сделка. Берем только те сделки, которые выполнены частично.
+        repo_deal_filter = RepoDeal.objects.filter(bill=rep_bill, datetime_first_part__lte=date_of_report,
+                                                   datetime_second_part__gte=date_of_report).values(
+            'repo_currency', 'direction_first_part').annotate(sum=Sum('count_without_sign'))
+        for item in repo_deal_filter:
+            money_balance = CalcSumDataService._get_or_create_money_balance(money_balance_list,
+                                                                            item['repo_currency'])
+            if item['direction_first_part'] == DirectionOfOperation.BUY:
+                money_balance.balance += item['sum']
+            elif item['direction_first_part'] == DirectionOfOperation.SELL:
+                money_balance.balance -= item['sum']
 
     # Помощник при расчете остатков финансов на счете
     @staticmethod
-    def _get_or_create_money_balance(money_balance_list: [], currency_code: str) -> MoneyBalance:
+    def _get_or_create_money_balance(money_balance_list: list[MoneyBalance], currency_code: str) -> MoneyBalance:
         money_balance = next(
             (x for x in money_balance_list if x.currency.code == currency_code), None)
         if money_balance is None:
@@ -113,7 +150,7 @@ class CalcSumDataService:
 
     # Помощник при расчете остатков финансов на счете
     @staticmethod
-    def _get_or_create_share_balance(share_balance_list: [], share_id: int) -> ShareBalance:
+    def _get_or_create_share_balance(share_balance_list: list[MoneyBalance], share_id: int) -> ShareBalance:
         share_balance = next(
             (x for x in share_balance_list if x.share.id == share_id), None)
         if share_balance is None:
