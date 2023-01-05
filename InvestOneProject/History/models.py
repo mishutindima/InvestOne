@@ -1,9 +1,9 @@
-from django.db import models
 from django.conf import settings
-from simple_history.models import HistoricalRecords
-from simple_history import register
 from django.contrib.auth.models import User
-from datetime import datetime
+from django.db import models
+from django.utils import timezone
+from simple_history import register
+from simple_history.models import HistoricalRecords
 
 # simple-history#
 register(User)
@@ -24,6 +24,11 @@ class Currency(models.Model):
 
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Currency):
+            return self.name.lower() == other.name.lower()
+        return NotImplemented
 
 
 class CurrencyAlternativeName(models.Model):
@@ -75,7 +80,7 @@ class ImportBrockerDataLog(models.Model):
         FINISHED_SUCCESS = "2", "Завершено успешно"
         ERROR = "-1", "Завершено с ошибкой"
 
-    datetime = models.DateTimeField(default=datetime.now())
+    datetime = models.DateTimeField(default=timezone.now())
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     file_or_content = models.FileField(upload_to="import_brocker_data_log/")
     status_code = models.IntegerField(default=0, choices=StatusCodeChoices.choices)
