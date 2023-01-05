@@ -14,6 +14,28 @@
       ],
       "django": true,
       "justMyCode": true
+    },
+    {
+      "name": "Python: Django Tests",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}\\InvestOneProject\\manage.py",
+      "args": [
+        "test"
+      ],
+      "django": true,
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Debug ImportOpenReportTestCase",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}\\InvestOneProject\\manage.py",
+      "args": [
+        "test",
+        "History.tests.test_services.ImportOpenReportTestCase"
+      ],
+      "django": true
     }
   ]
 }

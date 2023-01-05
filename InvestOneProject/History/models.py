@@ -25,12 +25,14 @@ class Currency(models.Model):
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
 
+
 class CurrencyAlternativeName(models.Model):
     code = models.ForeignKey(Currency, on_delete=models.PROTECT)
     alt_code = models.CharField(max_length=7, primary_key=True)
 
     def __str__(self):
         return "{} (alt_name: {})".format(self.code, self.alt_code)
+
 
 # Ценная бумага
 class Share(models.Model):
@@ -68,48 +70,48 @@ class Bill(models.Model):
 # Лог загрузки брокерских отчетов
 class ImportBrockerDataLog(models.Model):
     class StatusCodeChoices(models.IntegerChoices):
-        NOT_STARTED = '0', 'Не начато'
-        STARTED = '1', 'Начато'
-        FINISHED_SUCCESS = '2', 'Завершено успешно'
-        ERROR = '-1', 'Завершено с ошибкой'
+        NOT_STARTED = "0", "Не начато"
+        STARTED = "1", "Начато"
+        FINISHED_SUCCESS = "2", "Завершено успешно"
+        ERROR = "-1", "Завершено с ошибкой"
 
     datetime = models.DateTimeField(default=datetime.now())
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
-    file_or_content = models.FileField(upload_to='import_brocker_data_log/')
+    file_or_content = models.FileField(upload_to="import_brocker_data_log/")
     status_code = models.IntegerField(default=0, choices=StatusCodeChoices.choices)
     error_text = models.TextField()
 
 
 #  Справочник типов сделок
 class TypeOfDealsChoices(models.TextChoices):
-    BUYING_SHARES = 'BUYING_SHARES', 'Покупка акций'
-    SALE_OF_SHARES = 'SALE_OF_SHARES', 'Продажа акций'
-    DIVIDENT_PAYMENT = 'DIVIDENT_PAYMENT', 'Выплата дивидендов/купонов'
-    BUYING_BOND = 'BUYING_BOND', 'Покупка облигаций'
-    SALE_OF_BOND = 'SALE_OF_BOND', 'Продажа облигаций'
-    REFILL_MONEY = 'REFILL_MONEY', 'Внесение денег на счет'
-    WITHDRAWAL_MONEY = 'WITHDRAWAL_MONEY', 'Вывод денег со счета'
-    BROKER_COMMISSION = 'BROKER_COMMISSION', 'Брокерская комиссия'
-    TAX = 'TAX', 'Налоги'
-    UNKNOWN_TYPE = 'UNKNOWN', 'Не распознанный тип'
-    ERROR = 'ERROR', 'Ошибка'
+    BUYING_SHARES = "BUYING_SHARES", "Покупка акций"
+    SALE_OF_SHARES = "SALE_OF_SHARES", "Продажа акций"
+    DIVIDEND_PAYMENT = "DIVIDEND_PAYMENT", "Выплата дивидендов/купонов"
+    BUYING_BOND = "BUYING_BOND", "Покупка облигаций"
+    SALE_OF_BOND = "SALE_OF_BOND", "Продажа облигаций"
+    REFILL_MONEY = "REFILL_MONEY", "Внесение денег на счет"
+    WITHDRAWAL_MONEY = "WITHDRAWAL_MONEY", "Вывод денег со счета"
+    BROKER_COMMISSION = "BROKER_COMMISSION", "Брокерская комиссия"
+    TAX = "TAX", "Налоги"
+    UNKNOWN_TYPE = "UNKNOWN", "Не распознанный тип"
+    ERROR = "ERROR", "Ошибка"
 
 
 # Сделки с деньгами
 class MoneyDeal(models.Model):
     operation_number = models.CharField(max_length=30, blank=True, null=True)
-    type_of_deal = models.CharField(max_length=20,
-                                    choices=TypeOfDealsChoices.choices)
+    type_of_deal = models.CharField(max_length=20, choices=TypeOfDealsChoices.choices)
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
-    share_by_divident = models.ForeignKey(Share, on_delete=models.PROTECT, blank=True,
-                                          null=True)  # Выплата дивидендов по ЦБ
+    share_by_dividend = models.ForeignKey(
+        Share, on_delete=models.PROTECT, blank=True, null=True
+    )  # Выплата дивидендов по ЦБ
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     datetime = models.DateTimeField()
     sum = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
-    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+', blank=True, null=True)
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+", blank=True, null=True)
     tax = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
-    tax_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+', blank=True, null=True)
+    tax_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+", blank=True, null=True)
     comment = models.CharField(max_length=200, blank=True, null=True)
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
@@ -120,14 +122,14 @@ class MoneyDeal(models.Model):
 
 
 class BoardNamesChoices(models.TextChoices):
-    MOSCOW_BOARD = 'MOSCOW_BOARD', 'Московская биржа'
-    SPB_BOARD = 'SPB_BOARD', 'Санкт-Петербургская биржа (ФР СПб)'
+    MOSCOW_BOARD = "MOSCOW_BOARD", "Московская биржа"
+    SPB_BOARD = "SPB_BOARD", "Санкт-Петербургская биржа (ФР СПб)"
+
 
 # Сделки с ценными бумагами
 class ShareDeal(models.Model):
     operation_number = models.CharField(max_length=30)
-    type_of_deal = models.CharField(max_length=20,
-                                    choices=TypeOfDealsChoices.choices)
+    type_of_deal = models.CharField(max_length=20, choices=TypeOfDealsChoices.choices)
     currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     datetime = models.DateTimeField()
@@ -135,28 +137,29 @@ class ShareDeal(models.Model):
     price_without_sign = models.DecimalField(max_digits=15, decimal_places=5)
     count_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
-    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
     board_name = models.CharField(max_length=20, choices=BoardNamesChoices.choices)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return "Счет:{}, Дата:{}, Операция:{}, ЦБ:{}".format(self.bill, self.datetime, self.type_of_deal,
-                                                             self.share.name)
+        return "Счет:{}, Дата:{}, Операция:{}, ЦБ:{}".format(
+            self.bill, self.datetime, self.type_of_deal, self.share.name
+        )
 
 
 # Сделки обмена валют
 class CurrencyExchangeDeal(models.Model):
     operation_number = models.CharField(max_length=30)
     datetime = models.DateTimeField()
-    currency_from = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
-    currency_to = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    currency_from = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
+    currency_to = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
     bill = models.ForeignKey(Bill, on_delete=models.PROTECT)
     currency_from_sum = models.DecimalField(max_digits=15, decimal_places=2)
     currency_to_sum = models.DecimalField(max_digits=15, decimal_places=2)
     commission = models.DecimalField(max_digits=15, decimal_places=2)
-    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
@@ -180,9 +183,11 @@ class InvestRecommendation(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     history = HistoricalRecords()
 
+
 class DirectionOfOperation(models.TextChoices):
-    SELL = 'SELL', 'Продажа'
-    BUY = 'BUY', 'Покупка'
+    SELL = "SELL", "Продажа"
+    BUY = "BUY", "Покупка"
+
 
 # Сделки репо - единый класс как для валют, так и для ЦБ
 # Логика: 1-ая часть - продается актив, получается выручка в виде связанной валюты;
@@ -194,17 +199,15 @@ class RepoDeal(models.Model):
     datetime_second_part = models.DateTimeField()
     direction_first_part = models.CharField(max_length=4, choices=DirectionOfOperation.choices)
     # Одно из этих полей должно быть заполнено
-    repo_share = models.ForeignKey(Share, on_delete=models.PROTECT, null=True, related_name='+')
-    repo_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, null=True, related_name='+')
+    repo_share = models.ForeignKey(Share, on_delete=models.PROTECT, null=True, related_name="+")
+    repo_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, null=True, related_name="+")
 
     count_without_sign = models.DecimalField(max_digits=15, decimal_places=2)
     price_first_part_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
     price_second_part_with_sign = models.DecimalField(max_digits=15, decimal_places=2)
-    related_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    related_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
     commission = models.DecimalField(max_digits=15, decimal_places=2)
-    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name='+')
+    commission_currency = models.ForeignKey(Currency, on_delete=models.PROTECT, related_name="+")
     import_brocker_data_log = models.ForeignKey(ImportBrockerDataLog, on_delete=models.CASCADE, blank=True, null=True)
 
     history = HistoricalRecords()
-
-# Репо сделки с активами

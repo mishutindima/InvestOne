@@ -16,5 +16,34 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": true
   },
-  "python.linting.mypyEnabled": true
+  "python.linting.mypyEnabled": true,
+  "cSpell.words": [
+    "лотностью",
+    "парсинга",
+    "парсинге",
+    "парсить",
+    "репо",
+    "установном",
+    "analyticname",
+    "brocker",
+    "currencycode",
+    "destinationcurrency",
+    "keepdb",
+    "nontrade",
+    "operationdate",
+    "qnty",
+    "sourcecurrency",
+    "sumdestination",
+    "sumsource",
+    "svop"
+  ],
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./InvestOneProject",
+    "-p",
+    "test*.py"
+  ],
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": true
 }

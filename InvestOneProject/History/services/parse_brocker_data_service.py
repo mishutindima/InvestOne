@@ -4,7 +4,6 @@ from .parse_brocker_data_by_open import ParseBrockerDataByOpen
 
 # Цель класса - парсить брокерский отчет или данные
 class ParseBrockerDataService:
-
     def execute(self, import_brocker_data_log: ImportBrockerDataLog) -> None:
         try:
             import_brocker_data_log.status_code = ImportBrockerDataLog.StatusCodeChoices.STARTED
